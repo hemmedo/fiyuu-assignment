@@ -1,126 +1,104 @@
-import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {useState} from 'react';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {SafeScreen} from '@/components/templates';
+import SwipeableListItem from '@/components/atoms/SwipeableListItem/SwipeableListItem';
+import Animated from 'react-native-reanimated';
+import {Paths} from '@/navigation/paths';
+import type {RootScreenProps} from '@/navigation/types';
 
-import { useTheme } from '@/theme';
-import { useI18n, useUser } from '@/hooks';
+export interface Item {
+  id: string;
+  text: string;
+}
 
-import { AssetByVariant, IconByVariant, Skeleton } from '@/components/atoms';
-import { SafeScreen } from '@/components/templates';
+function Example({navigation}: RootScreenProps<Paths.Example>) {
+  const [data, setData] = useState<Item[]>([
+    {id: '1', text: 'Courier 1'},
+    {id: '2', text: 'Courier 2'},
+    {id: '3', text: 'Courier 3'},
+    {id: '4', text: 'Courier 4'},
+  ]);
 
-function Example() {
-  const { t } = useTranslation();
-  const { useFetchOneQuery } = useUser();
-  const { toggleLanguage } = useI18n();
+  const [deletedItems, setDeletedItems] = useState<Item[]>([]);
 
-  const {
-    backgrounds,
-    changeTheme,
-    colors,
-    components,
-    fonts,
-    gutters,
-    layout,
-    variant,
-  } = useTheme();
-
-  const [currentId, setCurrentId] = useState(-1);
-
-  const fetchOneUserQuery = useFetchOneQuery(currentId);
-
-  useEffect(() => {
-    if (fetchOneUserQuery.isSuccess) {
-      Alert.alert(
-        t('screen_example.hello_user', { name: fetchOneUserQuery.data.name }),
-      );
-    }
-  }, [fetchOneUserQuery.isSuccess, fetchOneUserQuery.data, t]);
-
-  const onChangeTheme = () => {
-    changeTheme(variant === 'default' ? 'dark' : 'default');
+  const removeItem = (id: string) => {
+    setData(prevData => prevData.filter(item => item.id !== id));
+    setDeletedItems(prevDeletedItems => [
+      ...prevDeletedItems,
+      data.find(item => item.id === id) as Item,
+    ]);
   };
 
   return (
-    <SafeScreen
-      isError={fetchOneUserQuery.isError}
-      onResetError={fetchOneUserQuery.refetch}
-    >
-      <ScrollView>
-        <View
-          style={[
-            layout.justifyCenter,
-            layout.itemsCenter,
-            gutters.marginTop_80,
-          ]}
-        >
-          <View
-            style={[layout.relative, backgrounds.gray100, components.circle250]}
-          />
-
-          <View style={[layout.absolute, gutters.paddingTop_80]}>
-            <AssetByVariant
-              path={'tom'}
-              resizeMode={'contain'}
-              style={{ height: 300, width: 300 }}
-            />
+    <SafeScreen style={styles.root}>
+      <Animated.FlatList
+        contentContainerStyle={styles.gap}
+        data={data}
+        keyExtractor={item => item.id}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text style={styles.headerText}>Couriers: </Text>
           </View>
+        }
+        renderItem={({item}) => (
+          <SwipeableListItem
+            onSwipeLeftComplete={() => removeItem(item.id)}
+            onSwipeRightComplete={() => removeItem(item.id)}>
+            <Text style={styles.text}>{item.text}</Text>
+          </SwipeableListItem>
+        )}
+        style={styles.listContainer}
+      />
+      <View style={styles.footer}>
+        <View style={styles.alignCenter}>
+          <Text>Deleted Items: {deletedItems.length}</Text>
+          <Text>Remaining Items: {data.length}</Text>
         </View>
 
-        <View style={[gutters.paddingHorizontal_32, gutters.marginTop_40]}>
-          <View style={[gutters.marginTop_40]}>
-            <Text style={[fonts.size_40, fonts.gray800, fonts.bold]}>
-              {t('screen_example.title')}
-            </Text>
-            <Text
-              style={[fonts.size_16, fonts.gray200, gutters.marginBottom_40]}
-            >
-              {t('screen_example.description')}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              layout.row,
-              layout.justifyBetween,
-              layout.fullWidth,
-              gutters.marginTop_16,
-            ]}
-          >
-            <Skeleton
-              height={64}
-              loading={fetchOneUserQuery.isLoading}
-              style={{ borderRadius: components.buttonCircle.borderRadius }}
-              width={64}
-            >
-              <TouchableOpacity
-                onPress={() => setCurrentId(Math.ceil(Math.random() * 9 + 1))}
-                style={[components.buttonCircle, gutters.marginBottom_16]}
-                testID="fetch-user-button"
-              >
-                <IconByVariant path={'send'} stroke={colors.purple500} />
-              </TouchableOpacity>
-            </Skeleton>
-
-            <TouchableOpacity
-              onPress={onChangeTheme}
-              style={[components.buttonCircle, gutters.marginBottom_16]}
-              testID="change-theme-button"
-            >
-              <IconByVariant path={'theme'} stroke={colors.purple500} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={toggleLanguage}
-              style={[components.buttonCircle, gutters.marginBottom_16]}
-              testID="change-language-button"
-            >
-              <IconByVariant path={'language'} stroke={colors.purple500} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+        <Pressable
+          onPress={() => navigation.navigate(Paths.DeletedItems, deletedItems)}
+          style={styles.nextBtn}>
+          <Text style={styles.text}>NEXT</Text>
+        </Pressable>
+      </View>
     </SafeScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  alignCenter: {
+    alignItems: 'center',
+  },
+  footer: {
+    alignItems: 'center',
+    gap: 24,
+    marginTop: 16,
+  },
+  gap: {gap: 16},
+  header: {
+    marginBottom: 16,
+  },
+  headerText: {
+    fontSize: 20,
+    fontWeight: 'semibold',
+  },
+  listContainer: {paddingHorizontal: 16},
+  nextBtn: {
+    alignItems: 'center',
+    backgroundColor: 'lightblue',
+    borderRadius: 4,
+    height: 40,
+    justifyContent: 'center',
+    width: '90%',
+  },
+  root: {
+    backgroundColor: 'white',
+  },
+  text: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});
 
 export default Example;
